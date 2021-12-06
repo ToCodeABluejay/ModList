@@ -1,0 +1,38 @@
+#!/bin/python
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from subprocess import Popen, PIPE
+from os import geteuid
+from sys import exit, argv as sys_argv
+
+class ModList(QMainWindow):
+	def __init__(self):
+		super().__init__()
+		self.setWindowTitle("ModList")
+		self.pushButton = QPushButton("button")
+		self.setCentralWidget(self.pushButton)
+		self.show()
+
+def main(argv: str) -> None:
+	app = QApplication(argv)
+	
+	if geteuid() != 0:
+		err = QMessageBox()
+		err.setIcon(QMessageBox.Critical)
+		err.setText("Must be run with root permissions!")
+		err.setWindowTitle("Error")
+		exit(err.exec_())
+	else:
+		main = ModList()
+		
+		p = Popen("lsmod", stdout=PIPE)
+		
+		output = str(p.communicate()[0]).replace("\\n", '\n').split('\n')
+		del output[0]
+		del output[-1]
+		
+		exit(app.exec())
+
+if __name__ == "__main__":
+	main(sys_argv)
