@@ -128,6 +128,7 @@ def main(argv: str) -> None:
 	Main function - just sets the application up :)
 	"""
 	app = QApplication(argv)
+	app.setApplicationName("Modlist")
 	
 	if geteuid() != 0:
 		err = QMessageBox()
