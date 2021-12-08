@@ -1,20 +1,132 @@
 #!/bin/python
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+"""
+MIT License
+
+Copyright (c) 2021 ToCodeABluejay
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
 from subprocess import Popen, PIPE
+from sys import exit, argv as ARGV
 from os import geteuid
-from sys import exit, argv as sys_argv
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 
 class ModList(QMainWindow):
-	def __init__(self):
-		super().__init__()
-		self.setWindowTitle("ModList")
-		self.pushButton = QPushButton("button")
-		self.setCentralWidget(self.pushButton)
+	
+	def __init__(self) -> None :
+		"""
+		Initialization function:
+			* Creates main window and all sub-elements
+			* Creates hooks for events
+		"""
+		super().__init__()	#Calls the initialization function of the parent class (aka 'QMainWindow')
+		
+		self.setWindowTitle("ModList")	#Window parameters...boring
+		self.resize(600, 600)
+		self.setWindowOpacity(0.8)	#Because I think it looks cool ;)
+		
+		widget = QWidget()
+		layout = QGridLayout()
+		
+		self.text_edit = QTextEdit(self)
+		layout.addWidget(self.text_edit, 0, 0, 1, 1)
+		
+		mods = open("/etc/modprobe.conf")
+		self.text_edit.setText(mods.read())
+		mods.close()
+		
+		self.save_and_regen = QPushButton(self)
+		self.save_and_regen.clicked.connect(self.save_changes)
+		self.save_and_regen.setText("Save and re-generate initramfs")
+		layout.addWidget(self.save_and_regen, 1, 0, 1, 1)
+		
+		self.pmb = QPushButton(self)
+		self.pmb.clicked.connect(self.print_mods)
+		self.pmb.setText("List mods")
+		layout.addWidget(self.pmb, 2, 0, 1, 1)
+		
+		self.help = QPushButton(self)
+		self.help.clicked.connect(self.help_box)
+		self.help.setText("Help")
+		layout.addWidget(self.help, 3, 0, 1, 1)
+		
+		widget.setLayout(layout)
+		self.setCentralWidget(widget)
 		self.show()
-
+		
+	def print_mods(self) -> None:
+		"""
+		Takes output from the command 'lsmod' in order to give
+		the user a list of currently loaded kernel modules
+		"""
+		p = Popen("lsmod", stdout=PIPE)
+		
+		modlist = list()
+		output = str(p.communicate()[0]).replace("\\n", '\n').split()
+		del output[0:4]
+		del output[-1]
+		for i in output:
+			if i.isalpha() and i not in modlist:
+				modlist.append(i)
+		
+		pout = QMessageBox()
+		pout.setText(' '.join([x for x in modlist]))
+		pout.setWindowTitle("List of active kernel modules")
+		pout.exec_()
+		
+	def save_changes(self) -> None:
+		"""
+		Saves the edited changes to '/etc/modprobe.conf'
+		and calls 'dracut --force' in order to re-generate
+		initramfs - notifies the user when completed
+		"""
+		mods = open("/etc/modprobe.conf", 'w')
+		mods.write(self.text_edit.toPlainText())
+		mods.close()
+		
+		regen = Popen(["dracut", "--force"])
+		regen.wait()
+		
+		done = QMessageBox()
+		done.setText("Done re-generating initramfs!!")
+		done.setWindowTitle("Completed")
+		done.exec_()
+	
+	def help_box(self) -> None:
+		"""
+		Prints a useful help message so people know what to do ;)
+		"""
+		help = QMessageBox()
+		help.setText("""To keep a module from loading automatically, add a line which states 'blacklist [MODULE_NAME]'
+To prevent another module prompting one to load, put instead 'install [MODULE_NAME]'
+To make a given module load on boot put 'install [MODULE_NAME] /path/to/module'
+When you are done making changes and would like to apply them, hit the "Save and re-generate button" and wait for it to re-generate your initramfs
+If you do not want to apply your changes, merely exit the application! :)""")
+		help.setWindowTitle("Help")
+		help.exec_()
+		
 def main(argv: str) -> None:
+	"""
+	Main function - just sets the application up :)
+	"""
 	app = QApplication(argv)
 	
 	if geteuid() != 0:
@@ -25,14 +137,13 @@ def main(argv: str) -> None:
 		exit(err.exec_())
 	else:
 		main = ModList()
-		
-		p = Popen("lsmod", stdout=PIPE)
-		
-		output = str(p.communicate()[0]).replace("\\n", '\n').split('\n')
-		del output[0]
-		del output[-1]
-		
+	
+		wrn = QMessageBox()
+		wrn.setText("Any changes saved here will make very important changes to the system boot process! Proceed with caution!!!")
+		wrn.setWindowTitle("Attention!")
+		wrn.exec_()
+	
 		exit(app.exec())
-
+	
 if __name__ == "__main__":
-	main(sys_argv)
+	main(ARGV)
