@@ -28,6 +28,7 @@ from os import geteuid
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+import os
 
 class ModList(QMainWindow):
 	
@@ -49,10 +50,21 @@ class ModList(QMainWindow):
 		self.text_edit = QTextEdit(self)
 		layout.addWidget(self.text_edit, 0, 0, 1, 1)
 		
-		mods = open("/etc/modprobe.conf")
-		self.text_edit.setText(mods.read())
-		mods.close()
-		
+		if (os.path.exists("/etc/modprobe.conf")):
+			path = "/etc/modprobe.conf"
+			mods = open("/etc/modprobe.conf")
+			self.text_edit.setText(mods.read())
+			mods.close()
+		elif (os.path.exists("/etc/modprobe.d")):
+			path = "/etc/modprobe.d/modprobe.conf"
+			if (os.path.exists("/etc/modprobe.d")):
+				mods = open("/etc/modprobe.d/modprobe.conf")
+				self.text_edit.setText(mods.read())
+				mods.close()
+		else:
+			sys.exit("ERROR: Don't know where to put conf file!!!")	
+
+
 		self.save_and_regen = QPushButton(self)
 		self.save_and_regen.clicked.connect(self.save_changes)
 		self.save_and_regen.setText("Save and re-generate initramfs")
@@ -98,7 +110,7 @@ class ModList(QMainWindow):
 		and calls 'dracut --force' in order to re-generate
 		initramfs - notifies the user when completed
 		"""
-		mods = open("/etc/modprobe.conf", 'w')
+		mods = open(path, 'w')
 		mods.write(self.text_edit.toPlainText())
 		mods.close()
 		
