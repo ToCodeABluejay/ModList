@@ -49,14 +49,15 @@ class ModList(QMainWindow):
 		
 		self.text_edit = QTextEdit(self)
 		layout.addWidget(self.text_edit, 0, 0, 1, 1)
+		self.path=""
 		
 		if (os.path.exists("/etc/modprobe.conf")):
-			path = "/etc/modprobe.conf"
+			self.path = "/etc/modprobe.conf"
 			mods = open("/etc/modprobe.conf")
 			self.text_edit.setText(mods.read())
 			mods.close()
 		elif (os.path.exists("/etc/modprobe.d")):
-			path = "/etc/modprobe.d/modprobe.conf"
+			self.path = "/etc/modprobe.d/modprobe.conf"
 			if (os.path.exists("/etc/modprobe.d")):
 				mods = open("/etc/modprobe.d/modprobe.conf")
 				self.text_edit.setText(mods.read())
@@ -110,7 +111,7 @@ class ModList(QMainWindow):
 		and calls 'dracut --force' in order to re-generate
 		initramfs - notifies the user when completed
 		"""
-		mods = open(path, 'w')
+		mods = open(self.path, 'w')
 		mods.write(self.text_edit.toPlainText())
 		mods.close()
 		
